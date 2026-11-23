@@ -1,0 +1,260 @@
+openapi: 3.0.3
+info:
+  title: Todolist API
+  description: API REST pour gérer des tâches (Express + MongoDB, base `todolist`).
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Serveur local
+tags:
+  - name: Tasks
+    description: Gestion des tâches
+
+paths:
+  /api/tasks:
+    get:
+      tags: [Tasks]
+      summary: Lister les tâches
+      description: Retourne les tâches, avec filtre par statut et tri par nom.
+      parameters:
+        - name: status
+          in: query
+          description: Filtre par statut
+          schema:
+            type: string
+            enum: [all, pending, done]
+            default: all
+        - name: sort
+          in: query
+          description: Tri par nom (insensible à la casse et aux accents)
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+      responses:
+        "200":
+          description: Liste des tâches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [Tasks]
+      summary: Créer une tâche
+      description: La tâche est créée avec le statut "en cours".
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskInput"
+            example:
+              name: Réviser MongoDB
+              description: Chapitre 3
+      responses:
+        "201":
+          description: Tâche créée
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tasks/stats:
+    get:
+      tags: [Tasks]
+      summary: Compteurs de tâches
+      description: Nombre total de tâches, en cours et terminées.
+      responses:
+        "200":
+          description: Compteurs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Stats"
+              example:
+                all: 5
+                pending: 3
+                done: 2
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tasks/{id}:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+    get:
+      tags: [Tasks]
+      summary: Lire une tâche
+      responses:
+        "200":
+          description: La tâche demandée
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          $ref: "#/components/responses/InvalidId"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Tasks]
+      summary: Modifier le nom et la description d'une tâche
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskInput"
+      responses:
+        "200":
+          description: Tâche modifiée
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Tasks]
+      summary: Supprimer une tâche
+      responses:
+        "204":
+          description: Tâche supprimée (pas de contenu)
+        "400":
+          $ref: "#/components/responses/InvalidId"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/tasks/{id}/status:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+    patch:
+      tags: [Tasks]
+      summary: Terminer ou rouvrir une tâche
+      description: "`done: true` passe la tâche à \"terminée\", `done: false` la remet \"en cours\"."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [done]
+              properties:
+                done:
+                  type: boolean
+                  example: true
+      responses:
+        "200":
+          description: Tâche mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          $ref: "#/components/responses/InvalidId"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  parameters:
+    TaskId:
+      name: id
+      in: path
+      required: true
+      description: Identifiant MongoDB (ObjectId, 24 caractères hexadécimaux)
+      schema:
+        type: string
+        pattern: "^[a-fA-F0-9]{24}$"
+        example: 665f1c2e8a1b2c3d4e5f6a7b
+
+  schemas:
+    Task:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 665f1c2e8a1b2c3d4e5f6a7b
+        name:
+          type: string
+          example: Réviser MongoDB
+        description:
+          type: string
+          example: Chapitre 3
+        status:
+          type: string
+          enum: [en cours, terminée]
+          example: en cours
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    TaskInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          example: Réviser MongoDB
+        description:
+          type: string
+          example: Chapitre 3
+    Stats:
+      type: object
+      properties:
+        all:
+          type: integer
+        pending:
+          type: integer
+        done:
+          type: integer
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Données invalides (ex. nom manquant ou ID invalide)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: Le nom est obligatoire
+    InvalidId:
+      description: Identifiant invalide
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: ID invalide
+    NotFound:
+      description: Tâche introuvable
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: Tâche introuvable
+    ServerError:
+      description: Erreur interne du serveur
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: Erreur interne du serveur
