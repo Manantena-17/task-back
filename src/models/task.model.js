@@ -1,4 +1,3 @@
-
 const { ObjectId } = require("mongodb");
 const { getDB } = require("../config/db");
 
@@ -7,7 +6,6 @@ const STATUS = { PENDING: "en cours", DONE: "terminée" };
 
 const collection = () => getDB().collection(process.env.COLLECTION || "tasks");
 
-// Liste avec filtre par statut et tri par nom
 async function findAll({ status = "all", sort = "asc" } = {}) {
   const filter = {};
   if (status === "done") filter.status = STATUS.DONE;
@@ -15,12 +13,11 @@ async function findAll({ status = "all", sort = "asc" } = {}) {
 
   return collection()
     .find(filter)
-    .collation({ locale: "fr", strength: 2 }) // ignore casse et accents
+    .collation({ locale: "fr", strength: 2 })
     .sort({ name: sort === "desc" ? -1 : 1 })
     .toArray();
 }
 
-// Compteurs : tout / en cours / terminées
 async function getStats() {
   const [all, done, pending] = await Promise.all([
     collection().countDocuments({}),
@@ -48,7 +45,6 @@ function update(id, { name, description = "" }) {
   );
 }
 
-// Terminer ou rouvrir une tâche
 function setStatus(id, done) {
   return collection().findOneAndUpdate(
     { _id: new ObjectId(id) },
@@ -63,4 +59,3 @@ async function remove(id) {
 }
 
 module.exports = { STATUS, findAll, getStats, findById, create, update, setStatus, remove };
-EOF
