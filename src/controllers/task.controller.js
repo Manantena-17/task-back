@@ -46,4 +46,3 @@ exports.remove = async (req, res) => {
   if (!deleted) return res.status(404).json({ error: "Tâche introuvable" });
   res.status(204).end();
 };
-EOF

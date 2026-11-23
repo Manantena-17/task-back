@@ -1,4 +1,3 @@
-
 const { MongoClient } = require("mongodb");
 
 let db;
@@ -17,4 +16,3 @@ function getDB() {
 }
 
 module.exports = { connectDB, getDB };
-EOF
